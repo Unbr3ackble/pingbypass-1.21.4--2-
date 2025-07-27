@@ -9,4 +9,4 @@ I am releasing it because I use it as a base to run [Phobot](https://github.com/
 Since Phobot is my last mc project I do not think I am going to maintain this for long.
 For a 1.12.2 PingBypass see [3arthh4ck](https://github.com/3arthqu4ke/3arthh4ck).
 
-Credits go to 3arthqu4ke for providing the original src. This is just a port to 1.21.4 of the client wich is stilla work-in-progress
+Credits go to 3arthqu4ke for providing the original src. This is just a port to 1.21.4 of the client wich is still a work-in-progress and does not work yet

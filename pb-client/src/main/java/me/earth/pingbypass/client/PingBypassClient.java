@@ -15,14 +15,58 @@ import me.earth.pingbypass.api.security.SecurityManager;
 import me.earth.pingbypass.api.side.Side;
 import net.minecraft.client.Minecraft;
 
+// Fabric API imports
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.network.PacketByteBuf;
+import me.earth.pingbypass.api.network.Channels;
+
 @Getter
-public class PingBypassClient extends AbstractPingBypass {
-    public PingBypassClient(EventBus eventBus, KeyboardAndMouse keyBoardAndMouse, CommandManager commandManager,
-                            ModuleManager moduleManager, ConfigManager configManager, FileManager fileManager,
-                            FileManager rootFileManager, SecurityManager securityManager, PluginManager pluginManager,
-                            PlayerRegistry friendManager, PlayerRegistry enemyManager, Minecraft minecraft, Chat chat) {
-        super(eventBus, keyBoardAndMouse, commandManager, moduleManager, configManager, fileManager,
-                rootFileManager, securityManager, pluginManager, friendManager, enemyManager, minecraft, chat, Side.CLIENT);
+public class PingBypassClient extends AbstractPingBypass implements ClientModInitializer {
+    public PingBypassClient(EventBus eventBus,
+                            KeyboardAndMouse keyBoardAndMouse,
+                            CommandManager commandManager,
+                            ModuleManager moduleManager,
+                            ConfigManager configManager,
+                            FileManager fileManager,
+                            FileManager rootFileManager,
+                            SecurityManager securityManager,
+                            PluginManager pluginManager,
+                            PlayerRegistry friendManager,
+                            PlayerRegistry enemyManager,
+                            Minecraft minecraft,
+                            Chat chat) {
+        super(eventBus, keyBoardAndMouse, commandManager, moduleManager,
+              configManager, fileManager, rootFileManager, securityManager,
+              pluginManager, friendManager, enemyManager, minecraft, chat,
+              Side.CLIENT);
     }
 
+    @Override
+    public void onInitializeClient() {
+        // Initialize core systems if needed:
+        // super.init();
+
+        // Register incoming "PONG" packets
+        ClientPlayNetworking.registerGlobalReceiver(
+            Channels.PONG,
+            (client, handler, buf, responseSender) -> {
+                int pongValue = buf.readInt();
+                client.execute(() -> {
+                    System.out.println("[PingBypass] Got PONG: " + pongValue);
+                });
+            }
+        );
+    }
+
+    /**
+     * Helper to send a PING to the server.
+     */
+    public static void sendPing(int value) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeInt(value);
+        ClientPlayNetworking.send(Channels.PING, buf);
+    }
 }
+

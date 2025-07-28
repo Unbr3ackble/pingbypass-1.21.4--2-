@@ -22,12 +22,19 @@ import me.earth.pingbypass.server.service.QueueService;
 import me.earth.pingbypass.server.service.ServerStatusService;
 import me.earth.pingbypass.server.session.AdminService;
 import me.earth.pingbypass.server.session.SessionManager;
+import me.earth.pingbypass.api.network.Channels;
+
+import net.fabricmc.api.DedicatedServerModInitializer;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.server.network.ServerPlayerEntity;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.SectionBufferBuilderPool;
 import net.minecraft.server.WorldStem;
 
 @Getter
-public class PingBypassServer extends AbstractPingBypass {
+public class PingBypassServer extends AbstractPingBypass implements DedicatedServerModInitializer {
     private final GenericCommandManager<ServerCommandSource, ServerCommand> serverCommandManager;
     private final ServerKeyboardAndMouse keyboardAndMouseAsServerKeyboard;
     private final ServerStatusService serverStatusService;
@@ -39,15 +46,42 @@ public class PingBypassServer extends AbstractPingBypass {
     private final WorldStem worldStem;
     private final String id;
 
-    public PingBypassServer(EventBus eventBus, ServerKeyboardAndMouse keyBoardAndMouse, CommandManager commandManager,
-                            ModuleManager moduleManager, ConfigManager configManager, FileManager fileManager,
-                            FileManager rootFileManager, SecurityManager securityManager, PluginManager pluginManager,
-                            PlayerRegistry friendManager, PlayerRegistry enemyManager, ServerStatusService serverStatusService,
+    public PingBypassServer(EventBus eventBus,
+                            ServerKeyboardAndMouse keyBoardAndMouse,
+                            CommandManager commandManager,
+                            ModuleManager moduleManager,
+                            ConfigManager configManager,
+                            FileManager fileManager,
+                            FileManager rootFileManager,
+                            SecurityManager securityManager,
+                            PluginManager pluginManager,
+                            PlayerRegistry friendManager,
+                            PlayerRegistry enemyManager,
+                            ServerStatusService serverStatusService,
                             GenericCommandManager<ServerCommandSource, ServerCommand> serverCommandManager,
-                            MaxPlayersService maxPlayersService, SessionManager sessionManager, QueueService queueService,
-                            ServerConfig serverConfig, AdminService adminService, Minecraft minecraft, Chat chat, String id) {
-        super(eventBus, keyBoardAndMouse, commandManager, moduleManager, configManager, fileManager,
-                rootFileManager, securityManager, pluginManager, friendManager, enemyManager, minecraft, chat, Side.SERVER);
+                            MaxPlayersService maxPlayersService,
+                            SessionManager sessionManager,
+                            QueueService queueService,
+                            ServerConfig serverConfig,
+                            AdminService adminService,
+                            Minecraft minecraft,
+                            Chat chat,
+                            String id) {
+        super(eventBus,
+              keyBoardAndMouse,
+              commandManager,
+              moduleManager,
+              configManager,
+              fileManager,
+              rootFileManager,
+              securityManager,
+              pluginManager,
+              friendManager,
+              enemyManager,
+              minecraft,
+              chat,
+              Side.SERVER);
+
         this.keyboardAndMouseAsServerKeyboard = keyBoardAndMouse;
         this.serverCommandManager = serverCommandManager;
         this.maxPlayersService = maxPlayersService;
@@ -60,4 +94,31 @@ public class PingBypassServer extends AbstractPingBypass {
         this.id = id;
     }
 
+    /**
+     * Fabric will call this on server startup.
+     * Registers our PING → PONG handler.
+     */
+    @Override
+    public void onInitializeServer() {
+        ServerPlayNetworking.registerGlobalReceiver(
+            Channels.PING,
+            (server, player, handler, buf, responseSender) -> {
+                int pingValue = buf.readInt();
+                // prepare a PONG (increment value for demo)
+                PacketByteBuf resp = PacketByteBufs.create();
+                resp.writeInt(pingValue + 1);
+                // send it back
+                ServerPlayNetworking.send(player, Channels.PONG, resp);
+            }
+        );
+    }
+
+    /**
+     * Utility for sending a PONG to a given player.
+     */
+    public static void sendPong(ServerPlayerEntity player, int value) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeInt(value);
+        ServerPlayNetworking.send(player, Channels.PONG, buf);
+    }
 }
